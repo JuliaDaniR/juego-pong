@@ -18,27 +18,37 @@ let puntosParaGanar = 5;
 let mensajeFinal = "";
 let inputNombre, selectPuntos;
 const nombreCPU = "CPU";
-let mostrarTextoInicio = true; // Variable para controlar la visibilidad del texto de inicio
+let mostrarTextoInicio = true;
+let juegoPausado = false; // Variable para controlar el estado de pausa
+let botonPlay, botonPausa, botonReiniciar;
+let sonidoClic;
+let sonidoHover;
 
 function setup() {
   createCanvas(windowWidth - 30, windowHeight - 150);
   inicializarElementos();
   cargarSonidos();
   crearBotones();
-  seleccionarDificultad(dificultad); // Inicializar velocidad según la dificultad por defecto
+  seleccionarDificultad(dificultad);
   actualizarBotones();
 }
 
 function draw() {
   background(0);
   if (juegoActivo) {
-    dibujarElementos();
-    moverPelota();
-    manejarRebotes();
-    moverRaquetaJugador();
-    moverRaquetaComputadora();
-    verificarPuntos();
-    mostrarPuntuacion();
+    if (juegoPausado) {
+      mostrarPantallaPausa(); // Muestra el mensaje de pausa
+      botonPlay.attribute("disabled", ""); // Deshabilita el botón Play
+    } else {
+      botonPlay.removeAttribute("disabled"); // Habilita el botón Play
+      dibujarElementos();
+      moverPelota();
+      manejarRebotes();
+      moverRaquetaJugador();
+      moverRaquetaComputadora();
+      verificarPuntos();
+      mostrarPuntuacion();
+    }
   } else {
     if (mensajeFinal) {
       mostrarMensajeFinal();
@@ -55,12 +65,16 @@ function inicializarElementos() {
     height / 2 - altoRaqueta / 2
   );
   pelota = createVector(width / 2, height / 2);
+  velocidadPelotaX = 5; // Ajuste inicial de la velocidad de la pelota
+  velocidadPelotaY = 3;
 }
 
 function cargarSonidos() {
   sonidoColision = loadSound("colision.mp3");
   sonidoPunto = loadSound("punto.wav");
   musicaFondo = loadSound("musica-fondo2.mp3");
+  sonidoClic = loadSound("click.mp3");
+  sonidoHover = loadSound("hover.mp3");
 }
 
 function crearBotones() {
@@ -82,32 +96,77 @@ function crearBotones() {
 
   // Crear botón de dificultad Fácil
   botonFacil = createButton("Fácil");
-  botonFacil.position(20, height + 60);
+  botonFacil.position(20, height + 25);
   botonFacil.class("dificultad");
-  botonFacil.mousePressed(() => seleccionarDificultad("facil"));
+  botonFacil.mousePressed(() => {
+    seleccionarDificultad("facil");
+    sonidoClic.play(); // Sonido de clic
+  });
+  botonFacil.mouseOver(() => sonidoHover.play());
 
   // Crear botón de dificultad Medio
   botonMedio = createButton("Medio");
-  botonMedio.position(100, height + 60);
+  botonMedio.position(100, height + 25);
   botonMedio.class("dificultad");
-  botonMedio.mousePressed(() => seleccionarDificultad("medio"));
+  botonMedio.mousePressed(() => {
+    seleccionarDificultad("medio");
+    sonidoClic.play(); // Sonido de clic
+  });
+  botonMedio.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
 
   // Crear botón de dificultad Difícil
   botonDificil = createButton("Difícil");
-  botonDificil.position(190, height + 60);
+  botonDificil.position(190, height + 25);
   botonDificil.class("dificultad");
-  botonDificil.mousePressed(() => seleccionarDificultad("dificil"));
+  botonDificil.mousePressed(() => {
+    seleccionarDificultad("dificil");
+    sonidoClic.play(); // Sonido de clic
+  });
+  botonDificil.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
 
   // Crear botón de Play
-  let botonPlay = createButton("Play");
-  botonPlay.position(280, height + 60);
-  botonPlay.mousePressed(iniciarJuego);
+  botonPlay = createButton("Play");
+  botonPlay.position(20, height + 80);
+  botonPlay.mousePressed(() => {
+    iniciarJuego();
+    sonidoClic.play();
+  });
+  botonPlay.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
   botonPlay.class("control");
 
+  // Crear botón de Pausa
+  botonPausa = createButton("Pausa");
+  botonPausa.position(105, height + 80);
+  botonPausa.mousePressed(() => {
+    pausarJuego();
+    sonidoClic.play();
+  });
+  botonPausa.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
+  botonPausa.class("control");
+
   // Crear botón de Reiniciar
-  let botonReiniciar = createButton("Reiniciar");
-  botonReiniciar.position(380, height + 60);
-  botonReiniciar.mousePressed(reiniciarJuego);
+  botonReiniciar = createButton("Reiniciar");
+  botonReiniciar.position(205, height + 80);
+  botonReiniciar.mousePressed(() => {
+    reiniciarJuego();
+    sonidoClic.play();
+  });
+  botonReiniciar.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
   botonReiniciar.class("control");
 }
 
@@ -116,25 +175,13 @@ function seleccionarDificultad(nuevaDificultad) {
     dificultad = nuevaDificultad;
     switch (dificultad) {
       case "facil":
-        if (windowWidth < 800) {
-          velocidadComputadora = 0.8;
-        } else {
-          velocidadComputadora = velocidadComputadoraFacil;
-        }
+        velocidadComputadora = velocidadComputadoraFacil;
         break;
       case "medio":
-        if (windowWidth < 800) {
-          velocidadComputadora = 1;
-        } else {
-          velocidadComputadora = velocidadComputadoraMedio;
-        }
+        velocidadComputadora = velocidadComputadoraMedio;
         break;
       case "dificil":
-        if (windowWidth < 800) {
-          velocidadComputadora = 2;
-        } else {
-          velocidadComputadora = velocidadComputadoraDificil;
-        }
+        velocidadComputadora = velocidadComputadoraDificil;
         break;
     }
     resetPelota();
@@ -160,6 +207,7 @@ function actualizarBotones() {
 
 function iniciarJuego() {
   juegoActivo = true;
+  juegoPausado = false; // Asegurar que el juego no esté pausado
   mensajeFinal = "";
   mostrarTextoInicio = false;
   inputNombre.hide();
@@ -170,12 +218,26 @@ function iniciarJuego() {
   }
   puntuacionJugador = 0;
   puntuacionComputadora = 0;
+  velocidadPelotaX = 5; // Velocidad de la pelota al iniciar el juego
+  velocidadPelotaY = 3;
   resetPelota();
+}
+
+function pausarJuego() {
+  if (juegoActivo) {
+    juegoPausado = !juegoPausado;
+    if (juegoPausado) {
+      musicaFondo.pause();
+    } else {
+      musicaFondo.loop();
+    }
+  }
 }
 
 function reiniciarJuego() {
   juegoActivo = false;
-  seleccionarDificultad(dificultad); // Reiniciar la velocidad según la dificultad actual
+  juegoPausado = false; // Reiniciar la pausa también
+  seleccionarDificultad(dificultad);
   musicaFondo.stop();
   inicializarElementos();
   resetPelota();
@@ -186,12 +248,12 @@ function reiniciarJuego() {
   selectPuntos.show();
   mostrarTextoInicio = true;
   mensajeFinal = "";
+  botonPlay.removeAttribute("disabled");
 }
 
 function mostrarPantallaInicial() {
   let tamanoTexto;
   if (windowWidth < 800) {
-    // Pantallas pequeñas
     tamanoTexto = 24;
   } else {
     tamanoTexto = 56;
@@ -200,22 +262,20 @@ function mostrarPantallaInicial() {
   textSize(tamanoTexto);
   textAlign(CENTER, CENTER);
 
-  // Colores de las capas
   let colores = [
-    color(0, 0, 0), // Negro (capa más baja)
-    color(255, 165, 0), // Naranja
-    color(255, 255, 0), // Amarillo
-    color(255, 255, 255), // Blanco (capa más alta)
+    color(0, 0, 0),
+    color(255, 165, 0),
+    color(255, 255, 0),
+    color(255, 255, 255),
   ];
 
   let desplazamientos = [
-    { x: 5, y: 5 }, // Desplazamiento para la sombra negra
-    { x: 4, y: 4 }, // Desplazamiento para la capa naranja
-    { x: 2, y: 2 }, // Desplazamiento para la capa amarilla
-    { x: 0, y: 0 }, // Texto principal en blanco
+    { x: 5, y: 5 },
+    { x: 4, y: 4 },
+    { x: 2, y: 2 },
+    { x: 0, y: 0 },
   ];
 
-  // Dibuja cada capa
   for (let i = 0; i < colores.length; i++) {
     fill(colores[i]);
     text(
@@ -226,9 +286,72 @@ function mostrarPantallaInicial() {
   }
 }
 
+function mostrarPantallaPausa() {
+  let tamanoTexto;
+  if (windowWidth < 800) {
+    tamanoTexto = 24;
+  } else {
+    tamanoTexto = 56;
+  }
+
+  textSize(tamanoTexto);
+  textAlign(CENTER, CENTER);
+
+  let colores = [
+    color(0, 0, 0),
+    color(255, 165, 0),
+    color(255, 255, 0),
+    color(255, 255, 255),
+  ];
+
+  let desplazamientos = [
+    { x: 5, y: 5 },
+    { x: 4, y: 4 },
+    { x: 2, y: 2 },
+    { x: 0, y: 0 },
+  ];
+
+  for (let i = 0; i < colores.length; i++) {
+    fill(colores[i]);
+    text(
+      "Juego Pausado",
+      width / 2 + desplazamientos[i].x,
+      height / 2 + desplazamientos[i].y
+    );
+  }
+}
+
 function dibujarElementos() {
-  dibujarRaqueta(raquetaJugador.x, raquetaJugador.y);
-  dibujarRaqueta(raquetaComputadora.x, raquetaComputadora.y);
+  // Cambiar el color de la cancha y las raquetas según la dificultad
+  let colorCancha, colorRaquetaJugador, colorRaquetaComputadora;
+
+  switch (dificultad) {
+    case "facil":
+      colorCancha = color(5, 5, 32);
+      colorRaquetaJugador = color(255, 255, 0);
+      colorRaquetaComputadora = color(200, 200, 0);
+      break;
+    case "medio":
+      colorCancha = color(67, 6, 6);
+      colorRaquetaJugador = color(0, 255, 0);
+      colorRaquetaComputadora = color(0, 255, 0);
+      break;
+    case "dificil":
+      colorCancha = color(3, 44, 3);
+      colorRaquetaJugador = color(255, 0, 0);
+      colorRaquetaComputadora = color(255, 0, 0);
+      break;
+  }
+
+  fill(colorCancha);
+  rect(0, 0, width, height);
+
+  dibujarRaqueta(raquetaJugador.x, raquetaJugador.y, colorRaquetaJugador);
+  dibujarRaqueta(
+    raquetaComputadora.x,
+    raquetaComputadora.y,
+    colorRaquetaComputadora
+  );
   dibujarPelota();
 }
 
@@ -236,20 +359,32 @@ function dibujarPelota() {
   if (windowWidth < 800) {
     diametroPelota = 15;
   }
-  fill("#f00"); // Color de la pelota (rojo)
+  let colorPelota;
+
+  switch (dificultad) {
+    case "facil":
+      colorPelota = color(255, 0, 0);
+      break;
+    case "medio":
+      colorPelota = color(255, 255, 0);
+      break;
+    case "dificil":
+      colorPelota = color(0, 255, 0);
+      break;
+  }
+  fill(colorPelota); // Color de la pelota (rojo)
   stroke("#fff"); // Color del borde de la pelota (blanco)
   strokeWeight(2); // Ancho del borde de la pelota
   ellipse(pelota.x, pelota.y, diametroPelota, diametroPelota);
 }
 
 function moverPelota() {
-  pelota.x += velocidadPelotaX;
-  pelota.y += velocidadPelotaY;
-
-  if (windowWidth > 700) {
-    velocidadPelotaX *= 1.001;
-    velocidadPelotaY *= 1.001;
+  if (!juegoPausado) {
+    pelota.x += velocidadPelotaX;
+    pelota.y += velocidadPelotaY;
   }
+  velocidadPelotaX *= 1.001;
+  velocidadPelotaY *= 1.001;
 }
 
 function manejarRebotes() {
@@ -259,40 +394,86 @@ function manejarRebotes() {
     pelota.y + diametroPelota / 2 > height
   ) {
     velocidadPelotaY *= -1;
-    pelota.y = constrain(
-      pelota.y,
-      diametroPelota / 2,
-      height - diametroPelota / 2
-    );
     sonidoColision.play();
   }
 
   // Rebote en la raqueta del jugador
   if (
-    pelota.x - diametroPelota / 2 < raquetaJugador.x + anchoRaqueta &&
+    pelota.x - diametroPelota / 2 <= raquetaJugador.x + anchoRaqueta &&
+    pelota.x - diametroPelota / 2 >= raquetaJugador.x &&
     pelota.y > raquetaJugador.y &&
     pelota.y < raquetaJugador.y + altoRaqueta
   ) {
-    velocidadPelotaX *= -1;
-    pelota.x = raquetaJugador.x + anchoRaqueta + diametroPelota / 2;
+    let deltaY = pelota.y - (raquetaJugador.y + altoRaqueta / 2);
+    let angulo;
+    if (abs(deltaY) < 10) {
+      // Si la pelota golpea cerca del centro
+      angulo = radians(random(-15, 15)); // Ángulo aleatorio
+    } else {
+      angulo = map(
+        deltaY,
+        -altoRaqueta / 2,
+        altoRaqueta / 2,
+        radians(-45),
+        radians(45)
+      );
+    }
+
+    let velocidad = sqrt(
+      velocidadPelotaX * velocidadPelotaX + velocidadPelotaY * velocidadPelotaY
+    );
+    velocidadPelotaX = cos(angulo) * velocidad;
+    velocidadPelotaY = sin(angulo) * velocidad;
+
+    // Mueve la pelota fuera de la raqueta
+    pelota.x = raquetaJugador.x + anchoRaqueta + diametroPelota / 2 + 1;
+
     sonidoColision.play();
   }
 
   // Rebote en la raqueta de la computadora
   if (
-    pelota.x + diametroPelota / 2 > raquetaComputadora.x &&
+    pelota.x + diametroPelota / 2 >= raquetaComputadora.x &&
+    pelota.x + diametroPelota / 2 <= raquetaComputadora.x + anchoRaqueta &&
     pelota.y > raquetaComputadora.y &&
     pelota.y < raquetaComputadora.y + altoRaqueta
   ) {
-    velocidadPelotaX *= -1;
-    pelota.x = raquetaComputadora.x - diametroPelota / 2;
+    let deltaY = pelota.y - (raquetaComputadora.y + altoRaqueta / 2);
+    let angulo;
+    if (abs(deltaY) < 10) {
+      // Si la pelota golpea cerca del centro
+      angulo = radians(random(-15, 15)); // Ángulo aleatorio
+    } else {
+      angulo = map(
+        deltaY,
+        -altoRaqueta / 2,
+        altoRaqueta / 2,
+        radians(-45),
+        radians(45)
+      );
+    }
+
+    let velocidad = sqrt(
+      velocidadPelotaX * velocidadPelotaX + velocidadPelotaY * velocidadPelotaY
+    );
+    velocidadPelotaX = cos(angulo) * velocidad * -1;
+    velocidadPelotaY = sin(angulo) * velocidad;
+
+    // Mueve la pelota fuera de la raqueta
+    pelota.x = raquetaComputadora.x - diametroPelota / 2 - 1;
+
     sonidoColision.play();
   }
 }
 
 function moverRaquetaJugador() {
-  if (keyIsDown(UP_ARROW)) raquetaJugador.y -= 12;
-  if (keyIsDown(DOWN_ARROW)) raquetaJugador.y += 12;
+  let velocidadJugador = 12;
+  if (windowWidth < 800) {
+    velocidadJugador = 6;
+  }
+
+  if (keyIsDown(UP_ARROW)) raquetaJugador.y -= velocidadJugador;
+  if (keyIsDown(DOWN_ARROW)) raquetaJugador.y += velocidadJugador;
 
   raquetaJugador.y = constrain(raquetaJugador.y, 0, height - altoRaqueta);
 }
@@ -304,11 +485,32 @@ function touchMoved() {
 }
 
 function moverRaquetaComputadora() {
+  let velocidadCPU;
+
+  if (windowWidth < 800) {
+    velocidadCPU = 2; // Base para pantallas pequeñas
+  } else {
+    velocidadCPU = 6; // Base para pantallas grandes
+  }
+
+  switch (dificultad) {
+    case "facil":
+      velocidadComputadora = velocidadCPU;
+      break;
+    case "medio":
+      velocidadComputadora = velocidadCPU * 1.5;
+      break;
+    case "dificil":
+      velocidadComputadora = velocidadCPU * 2;
+      break;
+  }
+
   if (pelota.y < raquetaComputadora.y + altoRaqueta / 2) {
     raquetaComputadora.y -= velocidadComputadora;
   } else {
     raquetaComputadora.y += velocidadComputadora;
   }
+
   raquetaComputadora.y = constrain(
     raquetaComputadora.y,
     0,
@@ -350,12 +552,12 @@ function mostrarPuntuacion() {
   text(`${nombreCPU}: ${puntuacionComputadora}`, width - 32, 40);
 }
 
-function dibujarRaqueta(x, y) {
+function dibujarRaqueta(x, y, colorRaqueta) {
   if (windowWidth < 800) {
     anchoRaqueta = 10;
     altoRaqueta = 80;
   }
-  fill("#0f0"); // Color de la raqueta (verde)
+  fill(colorRaqueta); // Color de la raqueta (verde)
   stroke("#fff"); // Color del borde de la raqueta (blanco)
   strokeWeight(4); // Ancho del borde de la raqueta
   rect(x, y, anchoRaqueta, altoRaqueta, 15);
@@ -364,52 +566,34 @@ function dibujarRaqueta(x, y) {
 function resetPelota() {
   pelota.x = width / 2;
   pelota.y = height / 2;
-  // Velocidad aleatoria basada en la dificultad
-  let velocidadMaximaX, velocidadMaximaY;
-  switch (dificultad) {
-    case "facil":
-      if (windowWidth < 800) {
-        velocidadMaximaX = 2.3;
-        velocidadMaximaY = 1.5;
-      } else {
-        velocidadMaximaX = 6;
-        velocidadMaximaY = 3;
-      }
-      break;
-    case "medio":
-      if (windowWidth < 800) {
-        velocidadMaximaX = 2.8;
-        velocidadMaximaY = 1.8;
-      } else {
-        velocidadMaximaX = 8;
-        velocidadMaximaY = 4;
-      }
-      break;
-    case "dificil":
-      if (windowWidth < 800) {
-        velocidadMaximaX = 4;
-        velocidadMaximaY = 2;
-      } else {
-        velocidadMaximaX = 10;
-        velocidadMaximaY = 6;
-      }
-      break;
-  }
+
+  // Configuración base de las velocidades
+  let baseVelocidadX, baseVelocidadY;
 
   if (windowWidth < 800) {
-    velocidadPelotaX =
-      random(velocidadMaximaX * 0.8, velocidadMaximaX * 1.2) *
-      (random() > 0.5 ? 1 : -1);
-    velocidadPelotaY =
-      random(velocidadMaximaY * 0.8, velocidadMaximaY * 1.2) *
-      (random() > 0.5 ? 1 : -1);
+    // Pantallas pequeñas
+    baseVelocidadX = 1.8;
+    baseVelocidadY = 1.2;
   } else {
-    velocidadPelotaX =
-      random(velocidadMaximaX * 0.8, velocidadMaximaX * 1.3) *
-      (random() > 0.5 ? 1 : -1);
-    velocidadPelotaY =
-      random(velocidadMaximaY * 0.8, velocidadMaximaY * 1.3) *
-      (random() > 0.5 ? 1 : -1);
+    // Pantallas grandes
+    baseVelocidadX = 6;
+    baseVelocidadY = 4;
+  }
+
+  // Escalar velocidades según la dificultad
+  switch (dificultad) {
+    case "facil":
+      velocidadPelotaX = baseVelocidadX * 0.7 * (random() > 0.5 ? 1 : -1);
+      velocidadPelotaY = baseVelocidadY * 0.7 * (random() > 0.5 ? 1 : -1);
+      break;
+    case "medio":
+      velocidadPelotaX = baseVelocidadX * 1.5 * (random() > 0.5 ? 1 : -1);
+      velocidadPelotaY = baseVelocidadY * 1.5 * (random() > 0.5 ? 1 : -1);
+      break;
+    case "dificil":
+      velocidadPelotaX = baseVelocidadX * 2 * (random() > 0.5 ? 1 : -1);
+      velocidadPelotaY = baseVelocidadY * 2 * (random() > 0.5 ? 1 : -1);
+      break;
   }
 }
 

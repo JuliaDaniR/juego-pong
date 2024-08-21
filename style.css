@@ -32,11 +32,17 @@ button.control, button.dificultad {
 button.control {
   background-color: #971295;
   font-weight: bolder;
+  border: 2px solid white;
 }
 
 button.control:hover {
   background-color: #c17ccc;
   color: #000;
+}
+
+.control:disabled {
+  background-color: #888; /* Gris para botones deshabilitados */
+  cursor: not-allowed;
 }
 
 button.dificultad {
@@ -74,7 +80,7 @@ input, select {
 @media (min-width: 900px) {
   /* Ajustar el tamaño de los botones y el canvas */
   button.control {
-    font-size: 1.1rem;
+    font-size: 1rem;
     padding: 8px 16px;
   }
 
@@ -95,28 +101,5 @@ input, select {
   }
 }
 
-/* Media Queries para pantallas muy pequeñas (móviles) */
-@media (max-width: 480px) {
-  /* Ajustar el tamaño de los botones y el canvas */
-  button.control {
-    font-size: 1rem;
-    padding: 6px 12px;
-  }
 
-  button.dificultad {
-    font-size: 0.8rem;
-    padding: 4px 10px;
-  }
-
-  canvas {
-    width: 100%;
-    height: auto;
-  }
-
-  /* Ajustar el tamaño de los campos de entrada y selección */
-  input, select {
-    font-size: 0.8rem;
-    padding: 6px;
-  }
-}
 
