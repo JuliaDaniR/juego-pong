@@ -24,11 +24,14 @@ let juegoPausado = false; // Variable para controlar el estado de pausa
 let botonPlay, botonPausa, botonReiniciar;
 let sonidoClic;
 let sonidoHover;
+let sonidoFinJuego;
 let mensajeDesarrollador = "Este proyecto fue desarrollado por Julia Rodriguez";
 let obstaculos = []; // Array para almacenar obstáculos
 let numObstaculos = 0;
 let tamañoObstaculo = 50;
 let imgPelotaEpico, imgFondoEpico, imgRaquetaEpico, imgRaquetaObstaculosEpico;
+let anguloPelota = 0; // Ángulo de rotación de la pelota
+let velocidadRotacion = 0.05; // Velocidad de rotación
 
 function preload() {
   imgPelotaEpico = loadImage("bola.png");
@@ -85,7 +88,7 @@ function draw() {
       botonPausa.attribute("disabled", "");
     }
   }
-  textSize(18);
+  textSize(20);
   fill(255);
   textAlign(RIGHT, BOTTOM);
   text(mensajeDesarrollador, width - 10, height - 10);
@@ -98,8 +101,8 @@ function inicializarElementos() {
     height / 2 - altoRaqueta / 2
   );
   pelota = createVector(width / 2, height / 2);
-  velocidadPelotaX = 5; // Ajuste inicial de la velocidad de la pelota
-  velocidadPelotaY = 3;
+  velocidadPelotaX = 6;
+  velocidadPelotaY = 4;
 
   if (dificultad === "epico" || dificultad === "dificil") {
     obstaculos = [];
@@ -115,11 +118,16 @@ function inicializarElementos() {
 }
 
 function cargarSonidos() {
-  sonidoColision = loadSound("colision.mp3");
+  sonidoColision = loadSound("colision.mp3", soundLoaded);
   sonidoPunto = loadSound("punto.wav");
   musicaFondo = loadSound("musica-fondo2.mp3");
   sonidoClic = loadSound("click.mp3");
-  sonidoHover = loadSound("hover.mp3");
+  sonidoHover = loadSound("hover.mp3", soundLoaded);
+  sonidoFinJuego = loadSound("fin-juego.wav");
+}
+function soundLoaded(sound) {
+  sonidoColision.setVolume(0.3);
+  sonidoHover.setVolume(0.5);
 }
 
 function crearBotones() {
@@ -327,13 +335,13 @@ function iniciarJuego() {
   selectPuntos.hide();
   selectObstaculos.hide();
   if (!musicaFondo.isPlaying()) {
-    musicaFondo.setVolume(0.5);
+    musicaFondo.setVolume(0.3);
     musicaFondo.loop();
   }
   puntuacionJugador = 0;
   puntuacionComputadora = 0;
-  velocidadPelotaX = 6;
-  velocidadPelotaY = 4;
+  velocidadPelotaX = velocidadPelotaX;
+  velocidadPelotaY = velocidadPelotaY;
   resetPelota();
   botonPlay.attribute("disabled", "");
   botonPausa.removeAttribute("disabled");
@@ -612,18 +620,27 @@ function dibujarPelota() {
 
   if (dificultad === "epico") {
     diametroPelota = 40;
+    push();
+    translate(pelota.x, pelota.y);
+    rotate(anguloPelota); // Aplica la rotación
+    imageMode(CENTER);
     image(
       imgPelotaEpico,
-      pelota.x - diametroPelota / 2,
-      pelota.y - diametroPelota / 2,
+      0, // Ajustar a 0 ya que hemos trasladado el origen
+      0, // Ajustar a 0 ya que hemos trasladado el origen
       diametroPelota,
       diametroPelota
     );
+    pop();
   } else {
     fill(colorPelota); // Color de la pelota
     stroke("#fff"); // Color del borde de la pelota (blanco)
     strokeWeight(2); // Ancho del borde de la pelota
-    ellipse(pelota.x, pelota.y, diametroPelota, diametroPelota);
+    push();
+    translate(pelota.x, pelota.y);
+    rotate(anguloPelota); // Aplica la rotación
+    ellipse(0, 0, diametroPelota, diametroPelota); // Dibujar la pelota en la nueva posición
+    pop();
   }
 }
 
@@ -633,8 +650,15 @@ function moverPelota() {
     pelota.y += velocidadPelotaY;
     verificarColisionesObstaculos();
   }
+  // Aumenta la velocidad de la pelota ligeramente
   velocidadPelotaX *= 1.001;
   velocidadPelotaY *= 1.001;
+
+  // Actualiza el ángulo de rotación basado en la velocidad
+  anguloPelota += (velocidadPelotaX + velocidadPelotaY) * 0.01; // Ajusta el factor de escala según sea necesario
+
+  // Asegúrate de que el ángulo esté en el rango adecuado
+  anguloPelota = anguloPelota % TWO_PI;
 }
 
 function verificarColisionesObstaculos() {
@@ -810,25 +834,44 @@ function moverRaquetaComputadora() {
   );
 }
 
+function narrarTexto(texto) {
+  // Verifica si la API de síntesis de voz está disponible
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(texto);
+    utterance.rate = 1.2;
+    utterance.pitch = 0.5;
+    speechSynthesis.speak(utterance);
+  } else {
+    console.log('La síntesis de voz no está soportada en este navegador.');
+  }
+}
+
 function verificarPuntos() {
   if (pelota.x < 0) {
+    // Gol para la computadora
     puntuacionComputadora++;
     resetPelota();
     sonidoPunto.play();
+    sonidoPunto.setVolume(0.3);
+    narrarTexto(`${nombreUsuario} ${puntuacionJugador} compu ${puntuacionComputadora}`);
     if (puntuacionComputadora >= puntosParaGanar) {
       terminarJuego(mensajeDerrota());
     }
   }
 
   if (pelota.x > width) {
+    // Gol para el jugador
     puntuacionJugador++;
     resetPelota();
     sonidoPunto.play();
+      sonidoPunto.setVolume(0.3);
+    narrarTexto(`${nombreUsuario} ${puntuacionJugador} compu ${puntuacionComputadora}`);
     if (puntuacionJugador >= puntosParaGanar) {
       terminarJuego(mensajeVictoria());
     }
   }
 }
+
 
 function mostrarPuntuacion() {
   let tamanio = 32;
@@ -849,8 +892,8 @@ function dibujarRaqueta(x, y, colorRaqueta) {
     anchoRaqueta = 10;
     altoRaqueta = 80;
   }
-  fill(colorRaqueta); // Color de la raqueta
-  stroke("#fff"); // Color del borde de la raqueta
+  fill(colorRaqueta); // Color de la raqueta (verde)
+  stroke("#fff"); // Color del borde de la raqueta (blanco)
   strokeWeight(4); // Ancho del borde de la raqueta
   rect(x, y, anchoRaqueta, altoRaqueta, 15);
 }
@@ -858,6 +901,7 @@ function dibujarRaqueta(x, y, colorRaqueta) {
 function resetPelota() {
   pelota.x = width / 2;
   pelota.y = height / 2;
+  anguloPelota = 0;
 
   // Configuración base de las velocidades
   let baseVelocidadX, baseVelocidadY;
@@ -893,10 +937,13 @@ function resetPelota() {
   }
 }
 
+let mensajeFinalMostrado = false;
+
 function terminarJuego(mensaje) {
   juegoActivo = false;
   mensajeFinal = mensaje;
   musicaFondo.stop();
+  mensajeFinalMostrado = false;
 }
 
 function mostrarMensajeFinal() {
@@ -941,8 +988,14 @@ function mostrarMensajeFinal() {
       height / 2 + desplazamientos[i].y
     );
   }
+ // Reproduce el sonido sólo una vez
+ if (!mensajeFinalMostrado) {
+  sonidoFinJuego.play();
+  sonidoFinJuego.setVolume(0.5);
+  mensajeFinalMostrado = true; // Marca el mensaje final como mostrado
 }
 
+}
 // Función para ajustar el texto si es demasiado largo
 function ajustarTextoParaCanvas(texto, maxAncho) {
   let palabras = texto.split(" ");
