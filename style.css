@@ -13,9 +13,21 @@ body {
   justify-content: center;
   align-items: center;
   margin: 0;
-  background: linear-gradient(235deg, #971295 0%, #c17ccc 50%, #821a44 100%);
   height: 100vh;
 }
+.epico {
+  background: linear-gradient(235deg, #0f010f 0%, #726275 50%, #1c1719 100%);
+}
+.medio {
+  background: linear-gradient(235deg, #261297 0%, #837ccc 50%, #261a82 100%);
+}
+.dificil {
+  background: linear-gradient(235deg, #129785 0%, #7cbccc 50%, #1a8278 100%);
+}
+.facil {
+  background: linear-gradient(235deg, #971295 0%, #c17ccc 50%, #821a44 100%);
+}
+
 
 /* Estilos para los botones */
 button.control, button.dificultad {
@@ -98,6 +110,7 @@ input, select {
   input, select {
     font-size: 0.9rem;
     padding: 8px;
+    color: rgb(188, 228, 13);
   }
 }
 

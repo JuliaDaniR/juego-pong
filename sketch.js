@@ -1,28 +1,41 @@
 let raquetaJugador, raquetaComputadora, pelota;
 let anchoRaqueta = 20,
   altoRaqueta = 120,
-  diametroPelota = 30;
+  diametroPelota = 25;
 let velocidadPelotaX, velocidadPelotaY;
 let velocidadComputadoraFacil = 6;
 let velocidadComputadoraMedio = 8;
-let velocidadComputadoraDificil = 11;
+let velocidadComputadoraDificil = 10;
+let velocidadComputadoraEpico = 12;
 let velocidadComputadora = velocidadComputadoraFacil;
 let puntuacionJugador = 0,
   puntuacionComputadora = 0;
 let sonidoColision, sonidoPunto, musicaFondo;
 let dificultad = "facil";
 let juegoActivo = false;
-let botonFacil, botonMedio, botonDificil;
+let botonFacil, botonMedio, botonDificil, botonEpico;
 let nombreUsuario = "Jugador";
 let puntosParaGanar = 5;
 let mensajeFinal = "";
-let inputNombre, selectPuntos;
+let inputNombre, selectPuntos, selectObstaculos;
 const nombreCPU = "CPU";
 let mostrarTextoInicio = true;
 let juegoPausado = false; // Variable para controlar el estado de pausa
 let botonPlay, botonPausa, botonReiniciar;
 let sonidoClic;
 let sonidoHover;
+let mensajeDesarrollador = "Este proyecto fue desarrollado por Julia Rodriguez";
+let obstaculos = []; // Array para almacenar obstáculos
+let numObstaculos = 0;
+let tamañoObstaculo = 50;
+let imgPelotaEpico, imgFondoEpico, imgRaquetaEpico, imgRaquetaObstaculosEpico;
+
+function preload() {
+  imgPelotaEpico = loadImage("bola.png");
+  imgFondoEpico = loadImage("fondo1.png");
+  imgRaquetaObstaculosEpico = loadImage("barra2.png");
+  imgRaquetaEpico = loadImage("barra1.png");
+}
 
 function setup() {
   createCanvas(windowWidth - 30, windowHeight - 150);
@@ -31,16 +44,18 @@ function setup() {
   crearBotones();
   seleccionarDificultad(dificultad);
   actualizarBotones();
+  numObstaculos = 0;
+  generarObstaculos();
 }
 
 function draw() {
   background(0);
   if (juegoActivo) {
     if (juegoPausado) {
-      mostrarPantallaPausa(); // Muestra el mensaje de pausa
-      botonPlay.attribute("disabled", ""); // Deshabilita el botón Play
+      mostrarPantallaPausa();
+      botonPlay.attribute("disabled", "");
     } else {
-      botonPlay.removeAttribute("disabled"); // Habilita el botón Play
+      botonPlay.attribute("disabled", "");
       dibujarElementos();
       moverPelota();
       manejarRebotes();
@@ -52,10 +67,28 @@ function draw() {
   } else {
     if (mensajeFinal) {
       mostrarMensajeFinal();
+      botonPlay.attribute("disabled", "");
+      botonReiniciar.removeAttribute("disabled");
+      botonDificil.attribute("disabled", "");
+      botonEpico.attribute("disabled", "");
+      botonFacil.attribute("disabled", "");
+      botonMedio.attribute("disabled", "");
+      botonPausa.attribute("disabled", "");
     } else if (mostrarTextoInicio) {
       mostrarPantallaInicial();
+      botonPlay.removeAttribute("disabled");
+      botonReiniciar.attribute("disabled", "");
+      botonDificil.removeAttribute("disabled");
+      botonEpico.removeAttribute("disabled");
+      botonFacil.removeAttribute("disabled");
+      botonMedio.removeAttribute("disabled");
+      botonPausa.attribute("disabled", "");
     }
   }
+  textSize(18);
+  fill(255);
+  textAlign(RIGHT, BOTTOM);
+  text(mensajeDesarrollador, width - 10, height - 10);
 }
 
 function inicializarElementos() {
@@ -67,6 +100,18 @@ function inicializarElementos() {
   pelota = createVector(width / 2, height / 2);
   velocidadPelotaX = 5; // Ajuste inicial de la velocidad de la pelota
   velocidadPelotaY = 3;
+
+  if (dificultad === "epico" || dificultad === "dificil") {
+    obstaculos = [];
+    for (let i = 0; i < numObstaculos; i++) {
+      obstaculos.push({
+        x: random(width / 4, width / 2),
+        y: random(0, height - tamañoObstaculo),
+        w: tamañoObstaculo,
+        h: tamañoObstaculo,
+      });
+    }
+  }
 }
 
 function cargarSonidos() {
@@ -87,12 +132,33 @@ function crearBotones() {
 
   // Crear selector de puntos para ganar
   selectPuntos = createSelect();
-  selectPuntos.position(200, height + -30);
+  selectPuntos.position(240, height + -30);
   selectPuntos.option("5");
   selectPuntos.option("7");
   selectPuntos.option("10");
+  selectPuntos.option("15");
+  selectPuntos.option("20");
   selectPuntos.class("select-puntos");
   selectPuntos.changed(() => (puntosParaGanar = int(selectPuntos.value())));
+
+  // Crear selector de obstáculos
+  selectObstaculos = createSelect();
+  selectObstaculos.position(380, height - 30);
+  selectObstaculos.option("0 Obstáculos");
+  selectObstaculos.option("2 Obstáculos");
+  selectObstaculos.option("4 Obstáculos");
+  selectObstaculos.option("6 Obstáculos");
+  selectObstaculos.option("8 Obstáculos");
+  selectObstaculos.class("select-obstaculos");
+  selectObstaculos.hide();
+
+  // Función para manejar el cambio en la selección de obstáculos
+  selectObstaculos.changed(() => {
+    // Convertir el texto a número para el número de obstáculos
+    let numSeleccionados = parseInt(selectObstaculos.value());
+    numObstaculos = numSeleccionados; // Actualizar el número de obstáculos
+    generarObstaculos(); // Regenerar obstáculos según la selección
+  });
 
   // Crear botón de dificultad Fácil
   botonFacil = createButton("Fácil");
@@ -100,9 +166,12 @@ function crearBotones() {
   botonFacil.class("dificultad");
   botonFacil.mousePressed(() => {
     seleccionarDificultad("facil");
-    sonidoClic.play(); // Sonido de clic
+    sonidoClic.play();
   });
-  botonFacil.mouseOver(() => sonidoHover.play());
+  botonFacil.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
 
   // Crear botón de dificultad Medio
   botonMedio = createButton("Medio");
@@ -110,7 +179,7 @@ function crearBotones() {
   botonMedio.class("dificultad");
   botonMedio.mousePressed(() => {
     seleccionarDificultad("medio");
-    sonidoClic.play(); // Sonido de clic
+    sonidoClic.play();
   });
   botonMedio.mouseOver(() => {
     sonidoHover.play();
@@ -123,9 +192,22 @@ function crearBotones() {
   botonDificil.class("dificultad");
   botonDificil.mousePressed(() => {
     seleccionarDificultad("dificil");
-    sonidoClic.play(); // Sonido de clic
+    sonidoClic.play();
   });
   botonDificil.mouseOver(() => {
+    sonidoHover.play();
+    sonidoHover.setVolume(0.5);
+  });
+
+  // Crear botón de Modo Epico
+  botonEpico = createButton("Épico");
+  botonEpico.position(280, height + 25);
+  botonEpico.class("dificultad");
+  botonEpico.mousePressed(() => {
+    seleccionarDificultad("epico");
+    sonidoClic.play();
+  });
+  botonEpico.mouseOver(() => {
     sonidoHover.play();
     sonidoHover.setVolume(0.5);
   });
@@ -176,12 +258,35 @@ function seleccionarDificultad(nuevaDificultad) {
     switch (dificultad) {
       case "facil":
         velocidadComputadora = velocidadComputadoraFacil;
+        selectObstaculos.hide();
+        document.body.classList.remove("epico");
+        document.body.classList.remove("dificil");
+        document.body.classList.remove("medio");
+        document.body.classList.add("facil");
         break;
       case "medio":
         velocidadComputadora = velocidadComputadoraMedio;
+        selectObstaculos.hide();
+        document.body.classList.remove("epico");
+        document.body.classList.remove("dificil");
+        document.body.classList.remove("facil");
+        document.body.classList.add("medio");
         break;
       case "dificil":
         velocidadComputadora = velocidadComputadoraDificil;
+        document.body.classList.remove("epico");
+        document.body.classList.add("dificil");
+        document.body.classList.remove("medio");
+        document.body.classList.remove("facil");
+        selectObstaculos.show();
+        break;
+      case "epico":
+        velocidadComputadora = velocidadComputadoraEpico;
+        selectObstaculos.show();
+        document.body.classList.add("epico");
+        document.body.classList.remove("dificil");
+        document.body.classList.remove("medio");
+        document.body.classList.remove("facil");
         break;
     }
     resetPelota();
@@ -194,14 +299,22 @@ function actualizarBotones() {
     botonFacil.elt.classList.add("selected");
     botonMedio.elt.classList.remove("selected");
     botonDificil.elt.classList.remove("selected");
+    botonEpico.elt.classList.remove("selected");
   } else if (dificultad === "medio") {
     botonFacil.elt.classList.remove("selected");
     botonMedio.elt.classList.add("selected");
     botonDificil.elt.classList.remove("selected");
+    botonEpico.elt.classList.remove("selected");
   } else if (dificultad === "dificil") {
     botonFacil.elt.classList.remove("selected");
     botonMedio.elt.classList.remove("selected");
     botonDificil.elt.classList.add("selected");
+    botonEpico.elt.classList.remove("selected");
+  } else if (dificultad === "epico") {
+    botonFacil.elt.classList.remove("selected");
+    botonMedio.elt.classList.remove("selected");
+    botonDificil.elt.classList.remove("selected");
+    botonEpico.elt.classList.add("selected");
   }
 }
 
@@ -212,15 +325,19 @@ function iniciarJuego() {
   mostrarTextoInicio = false;
   inputNombre.hide();
   selectPuntos.hide();
+  selectObstaculos.hide();
   if (!musicaFondo.isPlaying()) {
     musicaFondo.setVolume(0.5);
     musicaFondo.loop();
   }
   puntuacionJugador = 0;
   puntuacionComputadora = 0;
-  velocidadPelotaX = 5; // Velocidad de la pelota al iniciar el juego
-  velocidadPelotaY = 3;
+  velocidadPelotaX = 6;
+  velocidadPelotaY = 4;
   resetPelota();
+  botonPlay.attribute("disabled", "");
+  botonPausa.removeAttribute("disabled");
+  botonReiniciar.removeAttribute("disabled");
 }
 
 function pausarJuego() {
@@ -240,15 +357,35 @@ function reiniciarJuego() {
   seleccionarDificultad(dificultad);
   musicaFondo.stop();
   inicializarElementos();
+  if (dificultad === "epico" || dificultad === "dificil") {
+    obstaculos = [];
+    for (let i = 0; i < numObstaculos; i++) {
+      obstaculos.push({
+        x: random(width / 4, width / 2),
+        y: random(0, height - tamañoObstaculo),
+        w: tamañoObstaculo,
+        h: tamañoObstaculo,
+      });
+    }
+  }
   resetPelota();
   puntuacionJugador = 0;
   puntuacionComputadora = 0;
+  diametroPelota = 25;
+  numObstaculos = 0;
   inputNombre.value("");
   inputNombre.show();
   selectPuntos.show();
+  selectObstaculos.hide();
   mostrarTextoInicio = true;
   mensajeFinal = "";
   botonPlay.removeAttribute("disabled");
+  botonFacil.elt.classList.add("selected");
+  botonMedio.elt.classList.remove("selected");
+  botonDificil.elt.classList.remove("selected");
+  botonEpico.elt.classList.remove("selected");
+  botonPausa.removeAttribute("disabled");
+  botonReiniciar.attribute("disabled", "");
 }
 
 function mostrarPantallaInicial() {
@@ -321,6 +458,57 @@ function mostrarPantallaPausa() {
   }
 }
 
+function generarObstaculos() {
+  obstaculos = [];
+
+  // Ajustar el número de obstáculos basado en el ancho de la ventana
+  numObstaculos = windowWidth > 800 ? numObstaculos : 2;
+
+  for (let i = 0; i < numObstaculos; i++) {
+    let x, y;
+    let ancho, alto;
+    let intento = 0;
+    let maxIntentos = 100;
+    let solapado = true;
+
+    // Intentar colocar el obstáculo en una posición no solapada
+    while (solapado && intento < maxIntentos) {
+      x = random(width * 0.2, width * 0.8);
+      y = random(height * 0.2, height * 0.8);
+      ancho = random(20, 30);
+      alto = random(100, 160);
+
+      solapado = false;
+
+      // Verificar si el nuevo obstáculo solapa con algún obstáculo existente
+      for (let j = 0; j < obstaculos.length; j++) {
+        let o = obstaculos[j];
+        if (
+          !(
+            x + ancho < o.x ||
+            x > o.x + o.ancho ||
+            y + alto < o.y ||
+            y > o.y + o.alto
+          )
+        ) {
+          solapado = true;
+          break;
+        }
+      }
+
+      intento++;
+    }
+
+    if (!solapado) {
+      obstaculos.push({ x, y, ancho, alto });
+    } else {
+      console.warn(
+        "No se pudo colocar un obstáculo sin solapamiento después de varios intentos"
+      );
+    }
+  }
+}
+
 function dibujarElementos() {
   // Cambiar el color de la cancha y las raquetas según la dificultad
   let colorCancha, colorRaquetaJugador, colorRaquetaComputadora;
@@ -341,18 +529,64 @@ function dibujarElementos() {
       colorRaquetaJugador = color(255, 0, 0);
       colorRaquetaComputadora = color(255, 0, 0);
       break;
+    case "epico":
+      colorCancha = null;
+      colorRaquetaJugador = null;
+      colorRaquetaComputadora = null;
+      break;
   }
 
-  fill(colorCancha);
-  rect(0, 0, width, height);
+  if (dificultad === "epico") {
+    if (imgFondoEpico && imgRaquetaEpico) {
+      anchoRaqueta = 30;
+      altoRaqueta = 180;
+      image(imgFondoEpico, 0, 0, width, height);
+      image(
+        imgRaquetaEpico,
+        raquetaJugador.x,
+        raquetaJugador.y,
+        anchoRaqueta,
+        altoRaqueta
+      );
+      image(
+        imgRaquetaEpico,
+        raquetaComputadora.x,
+        raquetaComputadora.y,
+        anchoRaqueta,
+        altoRaqueta
+      );
+    } else {
+      console.error("Las imágenes no se han cargado correctamente.");
+    }
+    dibujarObstaculos();
+  } else {
+    fill(colorCancha);
+    rect(0, 0, width, height);
 
-  dibujarRaqueta(raquetaJugador.x, raquetaJugador.y, colorRaquetaJugador);
-  dibujarRaqueta(
-    raquetaComputadora.x,
-    raquetaComputadora.y,
-    colorRaquetaComputadora
-  );
+    dibujarRaqueta(raquetaJugador.x, raquetaJugador.y, colorRaquetaJugador);
+    dibujarRaqueta(
+      raquetaComputadora.x,
+      raquetaComputadora.y,
+      colorRaquetaComputadora
+    );
+  }
+  if (dificultad === "dificil") {
+    dibujarObstaculos();
+  }
   dibujarPelota();
+}
+
+function dibujarObstaculos() {
+  noStroke();
+  for (let obstaculo of obstaculos) {
+    image(
+      imgRaquetaObstaculosEpico,
+      obstaculo.x,
+      obstaculo.y,
+      obstaculo.ancho,
+      obstaculo.alto
+    );
+  }
 }
 
 function dibujarPelota() {
@@ -371,20 +605,58 @@ function dibujarPelota() {
     case "dificil":
       colorPelota = color(0, 255, 0);
       break;
+    case "epico":
+      colorPelota = null; // No usar color en el modo épico
+      break;
   }
-  fill(colorPelota); // Color de la pelota (rojo)
-  stroke("#fff"); // Color del borde de la pelota (blanco)
-  strokeWeight(2); // Ancho del borde de la pelota
-  ellipse(pelota.x, pelota.y, diametroPelota, diametroPelota);
+
+  if (dificultad === "epico") {
+    diametroPelota = 40;
+    image(
+      imgPelotaEpico,
+      pelota.x - diametroPelota / 2,
+      pelota.y - diametroPelota / 2,
+      diametroPelota,
+      diametroPelota
+    );
+  } else {
+    fill(colorPelota); // Color de la pelota
+    stroke("#fff"); // Color del borde de la pelota (blanco)
+    strokeWeight(2); // Ancho del borde de la pelota
+    ellipse(pelota.x, pelota.y, diametroPelota, diametroPelota);
+  }
 }
 
 function moverPelota() {
   if (!juegoPausado) {
     pelota.x += velocidadPelotaX;
     pelota.y += velocidadPelotaY;
+    verificarColisionesObstaculos();
   }
   velocidadPelotaX *= 1.001;
   velocidadPelotaY *= 1.001;
+}
+
+function verificarColisionesObstaculos() {
+  for (let obstaculo of obstaculos) {
+    if (
+      pelota.x + diametroPelota / 2 > obstaculo.x &&
+      pelota.x - diametroPelota / 2 < obstaculo.x + obstaculo.ancho &&
+      pelota.y + diametroPelota / 2 > obstaculo.y &&
+      pelota.y - diametroPelota / 2 < obstaculo.y + obstaculo.alto
+    ) {
+      let deltaX = pelota.x - (obstaculo.x + obstaculo.ancho / 4);
+      let deltaY = pelota.y - (obstaculo.y + obstaculo.alto / 4);
+
+      if (abs(deltaY) > abs(deltaX)) {
+        velocidadPelotaY *= -1;
+      } else {
+        velocidadPelotaX *= -1;
+      }
+
+      sonidoColision.play();
+    }
+  }
 }
 
 function manejarRebotes() {
@@ -464,10 +736,27 @@ function manejarRebotes() {
 
     sonidoColision.play();
   }
+
+  // Rebote en los obstáculos
+  if (dificultad === "epico" || dificultad === "dificil") {
+    for (let obs of obstaculos) {
+      if (
+        pelota.x + diametroPelota / 2 > obs.x &&
+        pelota.x - diametroPelota / 2 < obs.x + obs.w &&
+        pelota.y + diametroPelota / 2 > obs.y &&
+        pelota.y - diametroPelota / 2 < obs.y + obs.h
+      ) {
+        // Rebote en el obstáculo
+        velocidadPelotaX *= -1;
+        sonidoColision.play();
+        break; // Salir del bucle si la pelota colide con un obstáculo
+      }
+    }
+  }
 }
 
 function moverRaquetaJugador() {
-  let velocidadJugador = 12;
+  let velocidadJugador = 14;
   if (windowWidth < 800) {
     velocidadJugador = 6;
   }
@@ -502,6 +791,9 @@ function moverRaquetaComputadora() {
       break;
     case "dificil":
       velocidadComputadora = velocidadCPU * 2;
+      break;
+    case "epico":
+      velocidadComputadora = velocidadCPU * 2.5;
       break;
   }
 
@@ -557,8 +849,8 @@ function dibujarRaqueta(x, y, colorRaqueta) {
     anchoRaqueta = 10;
     altoRaqueta = 80;
   }
-  fill(colorRaqueta); // Color de la raqueta (verde)
-  stroke("#fff"); // Color del borde de la raqueta (blanco)
+  fill(colorRaqueta); // Color de la raqueta
+  stroke("#fff"); // Color del borde de la raqueta
   strokeWeight(4); // Ancho del borde de la raqueta
   rect(x, y, anchoRaqueta, altoRaqueta, 15);
 }
@@ -591,8 +883,12 @@ function resetPelota() {
       velocidadPelotaY = baseVelocidadY * 1.5 * (random() > 0.5 ? 1 : -1);
       break;
     case "dificil":
-      velocidadPelotaX = baseVelocidadX * 2 * (random() > 0.5 ? 1 : -1);
-      velocidadPelotaY = baseVelocidadY * 2 * (random() > 0.5 ? 1 : -1);
+      velocidadPelotaX = baseVelocidadX * 2.5 * (random() > 0.5 ? 1 : -1);
+      velocidadPelotaY = baseVelocidadY * 2.5 * (random() > 0.5 ? 1 : -1);
+      break;
+    case "epico":
+      velocidadPelotaX = baseVelocidadX * 3.5 * (random() > 0.5 ? 1 : -1);
+      velocidadPelotaY = baseVelocidadY * 3.5 * (random() > 0.5 ? 1 : -1);
       break;
   }
 }
@@ -675,6 +971,8 @@ function mensajeVictoria() {
       return `🎉 Felicidades ${nombreUsuario} 🎉\nGanaste en la dificultad media.\n¡Sigue subiendo el desafío!`;
     case "dificil":
       return `🏆 ¡Espectacular, ${nombreUsuario} 🏆\nSuperaste nuestro mayor nivel.\n¡Eres un experto, sigue jugando!`;
+    case "epico":
+      return `🚀 ¡Increíble, ${nombreUsuario} 🚀\nHas dominado el nivel Épico.\n¡Eres una leyenda en el juego!`;
   }
 }
 
@@ -686,5 +984,7 @@ function mensajeDerrota() {
       return `🤔 ¡Vamos subiendo de nivel!\nSigue intentando, ${nombreUsuario}! 🤔`;
     case "dificil":
       return `😓 Qué desafiante, ${nombreUsuario} 😓\nSigue intentando.\n¡Seguro lo lograrás!`;
+    case "epico":
+      return `🔥 ¡Vaya, ${nombreUsuario} 🔥\nEl nivel Épico no es fácil.\nNo te rindas, ¡prueba otra vez y conquista el desafío!`;
   }
 }
